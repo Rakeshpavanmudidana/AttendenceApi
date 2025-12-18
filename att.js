@@ -36,6 +36,38 @@ async function getBrowser() {
 }
 
 
+function groupByCourseBranchSemester(dropdown) {
+  const grouped = {};
+
+  for (const item of dropdown) {
+    const course = item.course.text;
+    const branch = item.branch.text;
+    const semester = item.semester.text;
+
+    if (!grouped[course]) {
+      grouped[course] = {};
+    }
+
+    if (!grouped[course][branch]) {
+      grouped[course][branch] = {};
+    }
+
+    if (!grouped[course][branch][semester]) {
+      grouped[course][branch][semester] = {
+        semesterValue: item.semester.value,
+        batch: item.semester.batch,
+        sections: []
+      };
+    }
+
+    grouped[course][branch][semester].sections.push(...item.sections);
+  }
+
+  return grouped;
+}
+
+
+
 // Login to get the required iframe ( attendence iframe )
 
 async function loginAndGetFrame(teacher_id, password) {
@@ -189,10 +221,14 @@ async function getAllOptions(teacher_id, password) {
     );
 
     dropdown = await extractAllDropdownData(frame);
-    
 
-    return { success: true, AttendanceTypeOptions: AttendanceTypeOptions, dropdown: dropdown };
+    const structuredDropdown = groupByCourseBranchSemester(dropdown);
 
+    return {
+    success: true,
+    AttendanceTypeOptions,
+    structuredDropdown
+    };
 }
 
 
@@ -210,6 +246,8 @@ async function extractAllDropdownData(frame) {
         ).map((o) => ({ id: o.id, value: o.value, text: o.textContent.trim() }))
     );
 
+
+
     for (const course of courses) {
         await frame.select(
         "#ctl00_CapPlaceHolder_CourseBranchSemester1_ddlCourse",
@@ -221,6 +259,8 @@ async function extractAllDropdownData(frame) {
             "#ctl00_CapPlaceHolder_CourseBranchSemester1_ddlBranch option"
         )
         );
+
+        
 
         const branches = await frame.evaluate(() =>
         Array.from(
@@ -289,14 +329,10 @@ async function extractAllDropdownData(frame) {
 
 }
 
+
+
 // To set all the input values to inputFields to get the studentsData
-
-async function inputValuesToStudentData( optionsData, frame ) {
-
-    // optionsData { attadenceType: { id: value, value: value }, date: value, course: { id: value, value: value}, 
-    // semester: { id: value, value: value}, branch: { id: value, value: value }, section: {id: value, value: value }}
-
-    // optionsData = {"attadenceType":{"id":"radsubstitute","value":"S"},"date":{"id":"txtDate","value":"25-11-2025"}};
+async function inputValuesToStudentData( optionsData, frame, functionCallFrom ) {
     
     const attadenceType = optionsData.attadenceType;
     
@@ -320,12 +356,19 @@ async function inputValuesToStudentData( optionsData, frame ) {
     }, dateField);
 
 
-    // const courseInput = optionsData.course;
+    await frame.select("#ctl00_CapPlaceHolder_CourseBranchSemester1_ddlCourse", optionsData.course.value);
+    await frame.evaluate(() => CBSCourseOnChange());
+
+    await frame.select("#ctl00_CapPlaceHolder_CourseBranchSemester1_ddlBranch", optionsData.branch.value);
+    await frame.evaluate(() => CBSBranchOnChange());
+
+    await frame.select("#ctl00_CapPlaceHolder_CourseBranchSemester1_ddlSemester", optionsData.semester.value);
+    await frame.evaluate(() => _fillSections());
+
+    await frame.select("#ctl00_CapPlaceHolder_CourseBranchSemester1_ddlSection", optionsData.sections.value);
 
 
 
-
-    // const course = optionsData.course;
 
     await frame.evaluate(() => document.querySelector("#btnShow").click());
 
@@ -337,43 +380,55 @@ async function inputValuesToStudentData( optionsData, frame ) {
     }, { timeout: 30000 });
 
 
+
+
+
     // Extracting student data..
-    console.log("Extracting student data.");
-    const result = await frame.evaluate(() => {
-    const container = document.querySelector("#divStudents");
-    const html = container.innerHTML.trim();
 
-    // Case: span exists → error message
-    const span = container.querySelector("span");
-    if (span) {
+    if ( functionCallFrom == "get_students_data"){
+        console.log("Extracting student data.");
+        const result = await frame.evaluate(() => {
+        const container = document.querySelector("#divStudents");
+        const html = container.innerHTML.trim();
+
+        // Case: span exists → error message
+        const span = container.querySelector("span");
+        if (span) {
+            return {
+            status: "error",
+            message: span.innerText.trim(),
+            rawHTML: html
+            };
+        }
+
+        // Case: table exists → student data
+        const table = container.querySelector("table");
+        if (table) {
+            const rows = Array.from(table.querySelectorAll("tr")).map(tr => tr.innerText.trim());
+            return {
+            status: "success",
+            count: rows.length - 1,
+            rows,
+            rawHTML: html
+            };
+        }
+
+        // Case: div exists but is empty or unexpected
         return {
-        status: "error",
-        message: span.innerText.trim(),
-        rawHTML: html
+            status: "unknown",
+            rawHTML: html
         };
+        });
+
+
+        return result;
+
     }
 
-    // Case: table exists → student data
-    const table = container.querySelector("table");
-    if (table) {
-        const rows = Array.from(table.querySelectorAll("tr")).map(tr => tr.innerText.trim());
-        return {
-        status: "success",
-        count: rows.length - 1,
-        rows,
-        rawHTML: html
-        };
+    else{
+
     }
-
-    // Case: div exists but is empty or unexpected
-    return {
-        status: "unknown",
-        rawHTML: html
-    };
-    });
-
-
-    return result;
+    
 
     
 }
@@ -390,7 +445,7 @@ async function get_students_data(teacher_id, password, optionsData) {
 
     console.log("Login Completed."); 
 
-    return await inputValuesToStudentData(JSON.parse(optionsData), frame );
+    return await inputValuesToStudentData(JSON.parse(optionsData), frame, "get_students_data");
 
 
 
@@ -401,15 +456,18 @@ async function get_students_data(teacher_id, password, optionsData) {
 // http://localhost:3000/get_students_data?teacher_id=12139&password=12139&optionsData={%22attadenceType%22:{%22id%22:%22radregular%22,%22value%22:%22R%22},%22date%22:{%22id%22:%22txtDate%22,%22value%22:%2229-11-2025%22}}
 // ( localhost )
 
+
+// http://localhost:3000/get_students_data?teacher_id=12139&password=12139&optionsData={"attadenceType":{"id":"radregular","value":"R","label":"Regular"},"date":{"id":"txtDate","value":"16-12-2025"},"course":{"id":"","value":"1","text":"B.Tech"},"semester":{"id":"","value":"3","text":"IV Semester","batch":"2024"},"branch":{"id":"","value":"11","text":"Computer Science and Engineering (Artificial Intelligence)"},"sections":{"id":"","value":"2","text":"Section B"}}
+
 app.get("/get_students_data", async (req, res) => {
 
     const { teacher_id, password, optionsData } = req.query;
 
-    // if (!teacher_id || !password || Object.keys(optionsData).length > 6  ) {
-    //     return res
-    //     .status(400)
-    //     .json({ error: "Missing teacher_id or password or optionsData" });
-    // }
+    if (!teacher_id || !password || Object.keys(optionsData).length == 6  ) {
+        return res
+        .status(400)
+        .json({ error: "Missing teacher_id or password or optionsData" });
+    }
 
     const studentDetails = await get_students_data(
         teacher_id,
@@ -424,7 +482,7 @@ app.get("/get_students_data", async (req, res) => {
 
 
 // Request to get the input fields in the iframe ( attendence )
-// http://localhost:3000/get_Options_data?teacher_id=12139&password=12139 ( localhost )
+// http://localhost:3000/get_Options_data?teacher_id=12139&password=12139
 
 app.get("/get_Options_data", async (req, res) => {
 
