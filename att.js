@@ -511,7 +511,7 @@ app.post("/get_student_profile", async (req, res) => {
 
     let studentProfiles = [];
 
-    for (const id of studentIdList){
+    for (const id of studentIds){
         const previousHTML = await frame.evaluate(() => {
     const t = document.querySelector("#tblReport");
     return t ? t.innerHTML : "";
