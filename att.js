@@ -509,12 +509,84 @@ app.post("/get_student_profile", async (req, res) => {
       return res.status(400).json({ error: "Invalid input" });
     }
 
-    // 🔹 fetch profiles (your existing logic)
-    const studentProfiles = await loginAndGetFrame(
-      teacher_id,
-      password,
-      "get_student_profile"
-    );
+    let studentProfiles = [];
+
+    for (const id of studentIdList){
+        const previousHTML = await frame.evaluate(() => {
+    const t = document.querySelector("#tblReport");
+    return t ? t.innerHTML : "";
+  });
+
+  await frame.evaluate((id) => {
+    const input = document.querySelector("#ctl00_CapPlaceHolder_txtRollNo");
+    input.value = "";
+    input.value = id;
+    __doPostBack('ctl00$CapPlaceHolder$btnSearch', '');
+  }, id);
+
+  try{
+  await frame.waitForFunction(
+    (oldHTML) => {
+      const t = document.querySelector("#tblReport");
+      return t && t.innerHTML !== oldHTML;
+    },
+    { timeout: 20000 },
+    previousHTML
+  );
+}
+catch{
+    studentProfiles.push(`{"id":"${id}","No student found"}`);
+    continue;
+}
+
+
+     const profile = await frame.evaluate((id) => {
+      let table = document.querySelector("#divProfile_BioData table");
+      let rows = table.querySelectorAll("tr");
+
+      const name = rows[3]?.querySelectorAll("td")[2]?.innerText.trim();
+
+      const phoneNumber = rows[11]?.querySelectorAll("td")[5]?.innerText.trim();
+
+      const email = rows[12]?.querySelectorAll("td")[2]?.innerText.trim();
+
+      const parentPhoneNumber = rows[24]?.querySelectorAll("td")[5]?.innerText.trim();
+
+      table = document.querySelector("#divProfile_Present table");
+      rows = table.querySelectorAll("tr");
+
+      const totalattedence = rows[21]?.querySelectorAll("td")[3]?.innerText.trim();
+
+      const div = document.querySelector('#divProfile_Backlogs');
+      const spanText = div.querySelector('span')?.innerText.trim();
+        let backlogs = '0';  
+        if (spanText === 'Student have no backlogs') {
+            console.log('No backlogs');
+        } 
+      else
+      {
+        table = div.querySelector("table");
+        rows = table.querySelectorAll("tr");
+
+        backlogs = rows[rows.length - 1]?.querySelector("td")?.innerText.trim();
+
+        backlogs = backlogs.replace("Total backlogs:", "");
+      }
+
+      return {
+        id,
+        name,
+        phoneNumber,
+        email,
+        parentPhoneNumber,
+        totalattedence,
+        backlogs
+      };
+    }, id);
+    console.log("name"+ profile.name);
+    studentProfiles.push(profile);
+
+    }    // 🔹 fetch profiles (your existing logic)
 
     // 🔹 If CSV requested
     if (format === "csv") {
