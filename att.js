@@ -5,6 +5,8 @@ const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
 
 const app = express();
+app.use(express.json());
+
 
 // Password encryption
 
@@ -496,239 +498,257 @@ async function get_students_data(teacher_id, password, optionsData) {
 
 // http://localhost:3000/get_student_profile?teacher_id=12139&password=12139&studentIds=['24l35a4306','24l35a4309','24l767']
 
-app.get("/get_student_profile", async (req, res) => {
-    const { teacher_id, password, studentIds } = req.query;
+app.post("/get_student_profile", async (req, res) => {
+  try {
+    const { teacher_id, password, studentIds } = req.body;
 
-    const { frame } = await loginAndGetFrame(teacher_id, password, "get_student_profile");
+    if (!teacher_id || !password || !Array.isArray(studentIds)) {
+      return res.status(400).json({ error: "Invalid input" });
+    }
+
+    const { frame } = await loginAndGetFrame(
+      teacher_id,
+      password,
+      "get_student_profile"
+    );
 
     let studentProfiles = [];
-    const studentIdList = JSON.parse(studentIds);
 
-    for (const id of studentIdList){
-        const previousHTML = await frame.evaluate(() => {
-    const t = document.querySelector("#tblReport");
-    return t ? t.innerHTML : "";
-  });
+    for (const id of studentIds) {
+      const previousHTML = await frame.evaluate(() => {
+        const t = document.querySelector("#tblReport");
+        return t ? t.innerHTML : "";
+      });
 
-  await frame.evaluate((id) => {
-    const input = document.querySelector("#ctl00_CapPlaceHolder_txtRollNo");
-    input.value = "";
-    input.value = id;
-    __doPostBack('ctl00$CapPlaceHolder$btnSearch', '');
-  }, id);
+      await frame.evaluate((id) => {
+        const input = document.querySelector("#ctl00_CapPlaceHolder_txtRollNo");
+        input.value = "";
+        input.value = id;
+        __doPostBack("ctl00$CapPlaceHolder$btnSearch", "");
+      }, id);
 
-  try{
-  await frame.waitForFunction(
-    (oldHTML) => {
-      const t = document.querySelector("#tblReport");
-      return t && t.innerHTML !== oldHTML;
-    },
-    { timeout: 20000 },
-    previousHTML
-  );
-}
-catch{
-    studentProfiles.push(`{"id":"${id}","No student found"}`);
-    continue;
-}
-
-
-     const profile = await frame.evaluate((id) => {
-      let table = document.querySelector("#divProfile_BioData table");
-      let rows = table.querySelectorAll("tr");
-
-      const name = rows[3]?.querySelectorAll("td")[2]?.innerText.trim();
-
-      const phoneNumber = rows[11]?.querySelectorAll("td")[5]?.innerText.trim();
-
-      const email = rows[12]?.querySelectorAll("td")[2]?.innerText.trim();
-
-      const parentPhoneNumber = rows[24]?.querySelectorAll("td")[5]?.innerText.trim();
-
-      table = document.querySelector("#divProfile_Present table");
-      rows = table.querySelectorAll("tr");
-
-      const totalattedence = rows[21]?.querySelectorAll("td")[3]?.innerText.trim();
-
-      const div = document.querySelector('#divProfile_Backlogs');
-      const spanText = div.querySelector('span')?.innerText.trim();
-        let backlogs = '0';  
-        if (spanText === 'Student have no backlogs') {
-            console.log('No backlogs');
-        } 
-      else
-      {
-        table = div.querySelector("table");
-        rows = table.querySelectorAll("tr");
-
-        backlogs = rows[rows.length - 1]?.querySelector("td")?.innerText.trim();
-
-        backlogs = backlogs.replace("Total backlogs:", "");
+      try {
+        await frame.waitForFunction(
+          oldHTML => {
+            const t = document.querySelector("#tblReport");
+            return t && t.innerHTML !== oldHTML;
+          },
+          { timeout: 20000 },
+          previousHTML
+        );
+      } catch {
+        studentProfiles.push({ id, error: "No student found" });
+        continue;
       }
 
-      return {
-        id,
-        name,
-        phoneNumber,
-        email,
-        parentPhoneNumber,
-        totalattedence,
-        backlogs
-      };
-    }, id);
-    console.log("name"+ profile.name);
-    studentProfiles.push(profile);
+      const profile = await frame.evaluate((id) => {
+        let table = document.querySelector("#divProfile_BioData table");
+        let rows = table.querySelectorAll("tr");
 
+        const name = rows[3]?.querySelectorAll("td")[2]?.innerText.trim();
+        const phoneNumber = rows[11]?.querySelectorAll("td")[5]?.innerText.trim();
+        const email = rows[12]?.querySelectorAll("td")[2]?.innerText.trim();
+        const parentPhoneNumber =
+          rows[24]?.querySelectorAll("td")[5]?.innerText.trim();
+
+        table = document.querySelector("#divProfile_Present table");
+        rows = table.querySelectorAll("tr");
+        const totalattedence =
+          rows[21]?.querySelectorAll("td")[3]?.innerText.trim();
+
+        const div = document.querySelector("#divProfile_Backlogs");
+        const spanText = div.querySelector("span")?.innerText.trim();
+
+        let backlogs = "0";
+        if (spanText !== "Student have no backlogs") {
+          table = div.querySelector("table");
+          rows = table.querySelectorAll("tr");
+          backlogs = rows.at(-1)?.querySelector("td")?.innerText
+            ?.replace("Total backlogs:", "")
+            ?.trim();
+        }
+
+        return {
+          id,
+          name,
+          phoneNumber,
+          email,
+          parentPhoneNumber,
+          totalattedence,
+          backlogs
+        };
+      }, id);
+
+      studentProfiles.push(profile);
     }
-      
 
-  res.json({ success: true, studentProfiles});
+    res.json({ success: true, studentProfiles });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
 
 
 // http://localhost:3000/get_today_classes?teacher_id=12139&password=12139
 
-app.get("/get_today_classes", async (req, res) => {
-  const { teacher_id, password } = req.query;
+app.post("/get_today_classes", async (req, res) => {
+  try {
+    const { teacher_id, password } = req.body;
 
-  const { frame } = await loginAndGetFrame(teacher_id, password, "get_today_classes");
+    const { frame } = await loginAndGetFrame(
+      teacher_id,
+      password,
+      "get_today_classes"
+    );
 
-  const text = await frame.evaluate(() => {
-    const container = document.querySelector("#divtodayclasses");
-    if (!container) return { status: "no-classes" };
+    const text = await frame.evaluate(() => {
+      const container = document.querySelector("#divtodayclasses");
+      if (!container) return { status: "no-classes" };
 
-    const rows = container.querySelectorAll("tr");
-    let output = "";
+      let output = "";
+      container.querySelectorAll("tr").forEach(row => {
+        const cells = row.querySelectorAll("td");
+        if (cells.length < 2) return;
 
-    rows.forEach(row => {
-      const cells = row.querySelectorAll("td");
-      if (cells.length < 2) return;
+        const [pno, time] = cells[0].innerText.split("\n");
+        const [subject, cls] = cells[1].innerText.split("\n");
 
-      const periodInfo = cells[0].innerText.trim().split("\n");
-      const classInfo = cells[1].innerText.trim().split("\n");
+        output += `${pno}\t\t${time}\n${subject || "No Class"}\t\t${cls || ""}\n\n`;
+      });
 
-      const periodNumber = periodInfo[0];
-
-      const time = periodInfo[1];
-
-      const subject = classInfo[0] ? classInfo[0] : "No Class";
-
-      const cls = classInfo[1] ? classInfo[1] : "";
-
-      output += periodNumber + "\t\t" + time + "\n" +  subject + "\t\t" + cls + "\n\n\n";
+      return output.trim();
     });
 
-    return  output.trim()
-  });
-
-//   console.log(text);
-
-  res.json(text);
+    res.json(text);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
 
 
 
 // http://localhost:3000/set_attendance?teacher_id=12139&password=12139&studentDetails=["21345","12334","56789"...]
 
-app.get("/set_attendance", async (req, res) => {
+app.post("/set_attendance", async (req, res) => {
+  try {
+    const { teacher_id, password, clickType, studentDetails } = req.body;
 
-    const { teacher_id, password, clickType, studentDetails } = req.query;
-
-    if (!teacher_id || !password || !clickType || !studentDetails) {
-        return res
-            .status(400)
-            .json({ error: "Missing teacher_id or password or studentDetails" });
+    if (!teacher_id || !password || !clickType || !Array.isArray(studentDetails)) {
+      return res.status(400).json({ error: "Invalid input" });
     }
-    const { frame } = await loginAndGetFrame(teacher_id, password);
+
+    const { frame } = await loginAndGetFrame(
+      teacher_id,
+      password,
+      "set_attendance"
+    );
 
     if (!frame) {
-        return { error: "iframe failed" };
+      return res.status(500).json({ error: "iframe failed" });
     }
+
     console.log("Login Completed.");
 
-    const FrameAfterOptions = await inputValuesToStudentData(JSON.parse(studentDetails),
-        frame, "set_attendance");
+    // Apply options & load students
+    await inputValuesToStudentData(
+      { clickType, studentDetails },
+      frame,
+      "set_attendance"
+    );
 
-    for (student of studentDetails) {
-        // set attendance logic here
+    // TODO: actual attendance logic here
+    for (const student of studentDetails) {
+      // mark attendance
     }
+
+    res.json({
+      success: true,
+      message: "Attendance processed",
+      count: studentDetails.length
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 
 
-// http://localhost:3000/get_Options_data?teacher_id=12139&password=12139&studentDetails=["21345","12334","56789"...]
 
-app.get("/set_attendance", async (req, res) => {
+// // http://localhost:3000/get_Options_data?teacher_id=12139&password=12139&studentDetails=["21345","12334","56789"...]
 
-    const { teacher_id, password, clickType, studentDetails } = req.query;
+// app.get("/set_attendance", async (req, res) => {
 
-    if (!teacher_id || !password || !clickType || !studentDetails) {
-        return res
-            .status(400)
-            .json({ error: "Missing teacher_id or password or studentDetails" });
-    }
-    const { frame } = await loginAndGetFrame(teacher_id, password);
+//     const { teacher_id, password, clickType, studentDetails } = req.query;
 
-    if (!frame) {
-        return { error: "iframe failed" };
-    }
-    console.log("Login Completed.");
+//     if (!teacher_id || !password || !clickType || !studentDetails) {
+//         return res
+//             .status(400)
+//             .json({ error: "Missing teacher_id or password or studentDetails" });
+//     }
+//     const { frame } = await loginAndGetFrame(teacher_id, password);
 
-    const FrameAfterOptions = await inputValuesToStudentData(JSON.parse(studentDetails),
-        frame, "set_attendance");
+//     if (!frame) {
+//         return { error: "iframe failed" };
+//     }
+//     console.log("Login Completed.");
 
-    for (student of studentDetails) {
-        // set attendance logic here
-    }
-});
+//     const FrameAfterOptions = await inputValuesToStudentData(JSON.parse(studentDetails),
+//         frame, "set_attendance");
+
+//     for (student of studentDetails) {
+//         // set attendance logic here
+//     }
+// });
 
 
 
 // Request function for student data for attendence
 // http://localhost:3000/get_students_data?teacher_id=12139&password=12139&optionsData={"attadenceType":{"id":"radregular","value":"R","label":"Regular"},"date":{"id":"txtDate","value":"16-12-2025"},"course":{"id":"","value":"1","text":"B.Tech"},"semester":{"id":"","value":"3","text":"IV Semester","batch":"2024"},"branch":{"id":"","value":"11","text":"Computer Science and Engineering (Artificial Intelligence)"},"sections":{"id":"","value":"2","text":"Section B"}}
 
-app.get("/get_students_data", async (req, res) => {
+app.post("/get_students_data", async (req, res) => {
+  try {
+    const { teacher_id, password, optionsData } = req.body;
 
-    const { teacher_id, password, optionsData } = req.query;
-
-    if (!teacher_id || !password || Object.keys(optionsData).length == 6) {
-        return res
-            .status(400)
-            .json({ error: "Missing teacher_id or password or optionsData" });
+    if (!teacher_id || !password || !optionsData) {
+      return res.status(400).json({ error: "Missing input data" });
     }
 
     const studentDetails = await get_students_data(
-        teacher_id,
-        password,
-        optionsData
+      teacher_id,
+      password,
+      JSON.stringify(optionsData)
     );
 
-    console.log(studentDetails);
     res.json(studentDetails);
-
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
+
 
 
 // Request to get the input fields in the iframe ( attendence )
 // http://localhost:3000/get_Options_data?teacher_id=12139&password=12139
 
-app.get("/get_Options_data", async (req, res) => {
-
-    const { teacher_id, password } = req.query;
+app.post("/get_Options_data", async (req, res) => {
+  try {
+    const { teacher_id, password } = req.body;
 
     if (!teacher_id || !password) {
-        return res
-            .status(400)
-            .json({ error: "Missing teacher_id or password" });
+      return res.status(400).json({ error: "Missing credentials" });
     }
 
     const result = await getAllOptions(teacher_id, password);
-
-    console.log("Extracting options Completed.");
-
     res.json(result);
-
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
 
 
 // the port = 3000
