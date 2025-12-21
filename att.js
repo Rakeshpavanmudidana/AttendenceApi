@@ -29,9 +29,16 @@ async function getBrowser() {
 
     if (!browser) {
         browser = await puppeteer.launch({
-            headless: true,
-            args: ["--no-sandbox"],
+        headless: "new",
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--no-zygote"
+        ]
         });
+
     }
     return browser;
 }
@@ -227,6 +234,7 @@ async function loginAndGetFrame(teacher_id, password, functionCallFrom = null) {
         await frame.waitForSelector("#ctl00_CapPlaceHolder_txtRollNo");
     else
         await frame.waitForSelector("#txtDate", { timeout: 15000 });
+
 
     return { page, frame };
 
@@ -647,6 +655,34 @@ app.get("/set_attendance", async (req, res) => {
 
 
 
+// http://localhost:3000/get_Options_data?teacher_id=12139&password=12139&studentDetails=["21345","12334","56789"...]
+
+app.get("/set_attendance", async (req, res) => {
+
+    const { teacher_id, password, clickType, studentDetails } = req.query;
+
+    if (!teacher_id || !password || !clickType || !studentDetails) {
+        return res
+            .status(400)
+            .json({ error: "Missing teacher_id or password or studentDetails" });
+    }
+    const { frame } = await loginAndGetFrame(teacher_id, password);
+
+    if (!frame) {
+        return { error: "iframe failed" };
+    }
+    console.log("Login Completed.");
+
+    const FrameAfterOptions = await inputValuesToStudentData(JSON.parse(studentDetails),
+        frame, "set_attendance");
+
+    for (student of studentDetails) {
+        // set attendance logic here
+    }
+});
+
+
+
 // Request function for student data for attendence
 // http://localhost:3000/get_students_data?teacher_id=12139&password=12139&optionsData={"attadenceType":{"id":"radregular","value":"R","label":"Regular"},"date":{"id":"txtDate","value":"16-12-2025"},"course":{"id":"","value":"1","text":"B.Tech"},"semester":{"id":"","value":"3","text":"IV Semester","batch":"2024"},"branch":{"id":"","value":"11","text":"Computer Science and Engineering (Artificial Intelligence)"},"sections":{"id":"","value":"2","text":"Section B"}}
 
@@ -696,4 +732,8 @@ app.get("/get_Options_data", async (req, res) => {
 
 // the port = 3000
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
+});
+

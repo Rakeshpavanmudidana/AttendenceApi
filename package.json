@@ -1,7 +1,15 @@
 {
+  "name": "attendence-api",
+  "version": "1.0.0",
+  "main": "att.js",
+  "scripts": {
+    "start": "node att.js"
+  },
   "dependencies": {
-    "cheerio": "^1.1.2",
-    "express": "^5.1.0",
-    "puppeteer": "^24.31.0"
+    "express": "^4.19.0",
+    "puppeteer": "^23.0.0",
+    "cheerio": "^1.0.0",
+    "crypto": "^1.0.1"
   }
 }
+
