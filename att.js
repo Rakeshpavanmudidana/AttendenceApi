@@ -503,7 +503,7 @@ async function get_students_data(teacher_id, password, optionsData) {
 
 app.post("/get_student_profile", async (req, res) => {
   try {
-    const { teacher_id, password, studentIds } = req.body;
+    const { teacher_id, password, studentIds, format } = req.body;
 
     if (!teacher_id || !password || !Array.isArray(studentIds)) {
       return res.status(400).json({ error: "Invalid input" });
