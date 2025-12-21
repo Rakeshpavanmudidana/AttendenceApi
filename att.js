@@ -1,4 +1,3 @@
-
 const express = require("express");
 const crypto = require("crypto");
 const puppeteer = require("puppeteer");
@@ -216,15 +215,15 @@ async function loginAndGetFrame(teacher_id, password, functionCallFrom = null) {
         { timeout: 10000 }
         );
 
-        await page.waitForSelector("#MenuLink116", { timeout: 10000 });
+        await page.waitForSelector("#MenuLink117", { timeout: 10000 });
         await page.evaluate(() => {
-        document.querySelector("#MenuLink116").click();
+        document.querySelector("#MenuLink117").click();
         });
 
         await page.waitForFunction(() => {
         const iframe = document.querySelector("#capIframeId");
         return iframe && iframe.src.includes("studentprofile.aspx");
-        }, { timeout: 15000 });
+        }, { timeout: 30000 });
 
 
     }
@@ -715,31 +714,6 @@ app.post("/set_attendance", async (req, res) => {
 
 
 
-// // http://localhost:3000/get_Options_data?teacher_id=12139&password=12139&studentDetails=["21345","12334","56789"...]
-
-// app.get("/set_attendance", async (req, res) => {
-
-//     const { teacher_id, password, clickType, studentDetails } = req.query;
-
-//     if (!teacher_id || !password || !clickType || !studentDetails) {
-//         return res
-//             .status(400)
-//             .json({ error: "Missing teacher_id or password or studentDetails" });
-//     }
-//     const { frame } = await loginAndGetFrame(teacher_id, password);
-
-//     if (!frame) {
-//         return { error: "iframe failed" };
-//     }
-//     console.log("Login Completed.");
-
-//     const FrameAfterOptions = await inputValuesToStudentData(JSON.parse(studentDetails),
-//         frame, "set_attendance");
-
-//     for (student of studentDetails) {
-//         // set attendance logic here
-//     }
-// });
 
 
 
@@ -795,4 +769,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
+
+
+
+
 
