@@ -5,11 +5,12 @@
   "scripts": {
     "start": "node att.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "express": "^4.19.0",
     "puppeteer": "^23.0.0",
-    "cheerio": "^1.0.0",
-    "crypto": "^1.0.1"
+    "cheerio": "^1.0.0"
   }
 }
-
