@@ -509,6 +509,8 @@ app.post("/get_student_profile", async (req, res) => {
       return res.status(400).json({ error: "Invalid input" });
     }
 
+    const { frame } = await loginAndGetFrame(teacher_id, password, "get_student_profile");
+
     let studentProfiles = [];
 
     for (const id of studentIds){
