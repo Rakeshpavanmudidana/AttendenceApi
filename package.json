@@ -6,8 +6,8 @@
     "start": "node att.js"
   },
   "engines": {
-    "node": ">=18"
-  },
+  "node": ">=18.18.0"
+},
   "dependencies": {
     "express": "^4.19.0",
     "puppeteer": "^23.0.0",
