@@ -3,6 +3,9 @@ const express = require("express");
 const crypto = require("crypto");
 const puppeteer = require("puppeteer");
 const cheerio = require("cheerio");
+const { Parser } = require("json2csv");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 app.use(express.json());
@@ -500,90 +503,51 @@ async function get_students_data(teacher_id, password, optionsData) {
 
 app.post("/get_student_profile", async (req, res) => {
   try {
-    const { teacher_id, password, studentIds } = req.body;
+    const { teacher_id, password, studentIds, format } = req.body;
 
     if (!teacher_id || !password || !Array.isArray(studentIds)) {
       return res.status(400).json({ error: "Invalid input" });
     }
 
-    const { frame } = await loginAndGetFrame(
+    // 🔹 fetch profiles (your existing logic)
+    const studentProfiles = await fetchStudentProfiles(
       teacher_id,
       password,
-      "get_student_profile"
+      studentIds
     );
 
-    let studentProfiles = [];
+    // 🔹 If CSV requested
+    if (format === "csv") {
+      const fields = [
+        "id",
+        "name",
+        "phoneNumber",
+        "email",
+        "parentPhoneNumber",
+        "totalattedence",
+        "backlogs"
+      ];
 
-    for (const id of studentIds) {
-      const previousHTML = await frame.evaluate(() => {
-        const t = document.querySelector("#tblReport");
-        return t ? t.innerHTML : "";
+      const parser = new Parser({ fields });
+      const csv = parser.parse(studentProfiles);
+
+      const filePath = path.join(
+        __dirname,
+        `student_profiles_${Date.now()}.csv`
+      );
+
+      fs.writeFileSync(filePath, csv);
+
+      return res.download(filePath, "student_profiles.csv", () => {
+        fs.unlinkSync(filePath); // cleanup
       });
-
-      await frame.evaluate((id) => {
-        const input = document.querySelector("#ctl00_CapPlaceHolder_txtRollNo");
-        input.value = "";
-        input.value = id;
-        __doPostBack("ctl00$CapPlaceHolder$btnSearch", "");
-      }, id);
-
-      try {
-        await frame.waitForFunction(
-          oldHTML => {
-            const t = document.querySelector("#tblReport");
-            return t && t.innerHTML !== oldHTML;
-          },
-          { timeout: 20000 },
-          previousHTML
-        );
-      } catch {
-        studentProfiles.push({ id, error: "No student found" });
-        continue;
-      }
-
-      const profile = await frame.evaluate((id) => {
-        let table = document.querySelector("#divProfile_BioData table");
-        let rows = table.querySelectorAll("tr");
-
-        const name = rows[3]?.querySelectorAll("td")[2]?.innerText.trim();
-        const phoneNumber = rows[11]?.querySelectorAll("td")[5]?.innerText.trim();
-        const email = rows[12]?.querySelectorAll("td")[2]?.innerText.trim();
-        const parentPhoneNumber =
-          rows[24]?.querySelectorAll("td")[5]?.innerText.trim();
-
-        table = document.querySelector("#divProfile_Present table");
-        rows = table.querySelectorAll("tr");
-        const totalattedence =
-          rows[21]?.querySelectorAll("td")[3]?.innerText.trim();
-
-        const div = document.querySelector("#divProfile_Backlogs");
-        const spanText = div.querySelector("span")?.innerText.trim();
-
-        let backlogs = "0";
-        if (spanText !== "Student have no backlogs") {
-          table = div.querySelector("table");
-          rows = table.querySelectorAll("tr");
-          backlogs = rows.at(-1)?.querySelector("td")?.innerText
-            ?.replace("Total backlogs:", "")
-            ?.trim();
-        }
-
-        return {
-          id,
-          name,
-          phoneNumber,
-          email,
-          parentPhoneNumber,
-          totalattedence,
-          backlogs
-        };
-      }, id);
-
-      studentProfiles.push(profile);
     }
 
+    // 🔹 default JSON response
     res.json({ success: true, studentProfiles });
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
