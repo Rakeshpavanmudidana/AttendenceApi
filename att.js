@@ -545,9 +545,10 @@ catch{
       let table = document.querySelector("#divProfile_BioData table");
       let rows = table.querySelectorAll("td");
 
-         let name;
+         let name = rows[11].innerText.trim();
          rows.forEach(td => {
           if (td.innerText.trim() === 'Name') {
+              console.log("jkjjkws");
             name = td.nextElementSibling?.nextElementSibling?.innerText.trim();
           }
         });
@@ -798,6 +799,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
 
 
 
