@@ -546,10 +546,11 @@ catch{
       let rows = table.querySelectorAll("td");
 
          let name;
+         let got = 0;
          rows.forEach(td => {
-          if (td.innerText.trim() === 'Name') {
+          if (td.innerText.trim() === 'Name' && got == 0) {
             name = td.nextElementSibling?.nextElementSibling?.innerText.trim();
-              break;
+            got = 1;
           }
         });
 
@@ -799,6 +800,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
 
 
 
