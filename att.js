@@ -543,7 +543,7 @@ catch{
 
      const profile = await frame.evaluate((id) => {
       let table = document.querySelector("#divProfile_BioData table");
-      let rows = table.querySelectorAll("tr");
+      let rows = table.querySelectorAll("td");
 
          let name;
          rows.forEach(td => {
@@ -577,7 +577,7 @@ catch{
       
 
       table = document.querySelector("#divProfile_Present table");
-      rows = table.querySelectorAll("tr");
+      rows = table.querySelectorAll("td");
 
 
          let totalattedence;
@@ -798,6 +798,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
 
 
 
