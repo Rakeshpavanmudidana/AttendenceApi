@@ -545,18 +545,48 @@ catch{
       let table = document.querySelector("#divProfile_BioData table");
       let rows = table.querySelectorAll("tr");
 
-      const name = rows[3]?.querySelectorAll("td")[2]?.innerText.trim();
+         let name;
+         rows.forEach(td => {
+          if (td.innerText.trim() === 'Name') {
+            let = td.nextElementSibling?.nextElementSibling?.innerText.trim();
+          }
+        });
 
-      const phoneNumber = rows[11]?.querySelectorAll("td")[5]?.innerText.trim();
+          let phoneNumber;
 
-      const email = rows[12]?.querySelectorAll("td")[2]?.innerText.trim();
+         rows.forEach(td => {
+          if (td.innerText.trim() === 'Mobile.No') {
+            phoneNumber = td.nextElementSibling?.nextElementSibling?.innerText.trim();
+          }
+        });
 
-      const parentPhoneNumber = rows[24]?.querySelectorAll("td")[5]?.innerText.trim();
+          let email;
+          rows.forEach(td => {
+          if (td.innerText.trim() === 'Email') {
+            email = td.nextElementSibling?.nextElementSibling?.innerText.trim();
+          }
+        });
+
+         let parentPhoneNumber;
+         rows.forEach(td => {
+          if (td.innerText.trim() === 'Father Mobile.No') {
+            parentPhoneNumber = td.nextElementSibling?.nextElementSibling?.innerText.trim();
+          }
+        });
+
+      
 
       table = document.querySelector("#divProfile_Present table");
       rows = table.querySelectorAll("tr");
 
       const totalattedence = rows[21]?.querySelectorAll("td")[3]?.innerText.trim();
+
+         let totalattedence;
+         rows.forEach(td => {
+          if (td.innerText.trim() === 'Father Mobile.No') {
+            totalattedence = td.nextElementSibling?.nextElementSibling?.nextElementSibling?.innerText.trim();
+          }
+        });
 
       const div = document.querySelector('#divProfile_Backlogs');
       const spanText = div.querySelector('span')?.innerText.trim();
@@ -769,6 +799,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
 
 
 
