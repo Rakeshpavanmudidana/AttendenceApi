@@ -579,11 +579,10 @@ catch{
       table = document.querySelector("#divProfile_Present table");
       rows = table.querySelectorAll("tr");
 
-      const totalattedence = rows[21]?.querySelectorAll("td")[3]?.innerText.trim();
 
          let totalattedence;
          rows.forEach(td => {
-          if (td.innerText.trim() === 'Father Mobile.No') {
+          if (td.innerText.trim() === 'TOTAL') {
             totalattedence = td.nextElementSibling?.nextElementSibling?.nextElementSibling?.innerText.trim();
           }
         });
@@ -799,6 +798,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
 
 
 
