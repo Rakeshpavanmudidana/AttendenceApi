@@ -548,7 +548,7 @@ catch{
          let name;
          rows.forEach(td => {
           if (td.innerText.trim() === 'Name') {
-            let = td.nextElementSibling?.nextElementSibling?.innerText.trim();
+            let name = td.nextElementSibling?.nextElementSibling?.innerText.trim();
           }
         });
 
@@ -798,6 +798,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
 
 
 
