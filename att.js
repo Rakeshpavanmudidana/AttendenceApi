@@ -225,10 +225,10 @@ async function loginAndGetFrame(teacher_id, password, functionCallFrom = null) {
         { timeout: 10000 }
         );
 
-        await page.waitForSelector("#MenuLink117", { timeout: 10000 });
-        await page.evaluate(() => {
-        document.querySelector("#MenuLink117").click();
-        });
+        await page.waitForXPath("//span[normalize-space(text())='STUDENT PROFILE']", { timeout: 10000 });
+
+        const [studentProfile] = await page.$x("//span[normalize-space(text())='STUDENT PROFILE']");
+        await studentProfile.click();
 
         await page.waitForFunction(() => {
         const iframe = document.querySelector("#capIframeId");
