@@ -83,18 +83,8 @@ function groupByCourseBranchSemester(dropdown) {
 
 // Login to get the required iframe ( attendence iframe )
 async function loginAndGetFrame(teacher_id, password, functionCallFrom = null) {
-    const browser = await puppeteer.launch({
-        headless: "new",
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--no-zygote"
-        ]
-        });
-    const page = await browser.newPage();
+    const browser = await getBrowser();
+  const page = await browser.newPage();
     await page.goto("https://webprosindia.com/vignanit/default.aspx#", {
         waitUntil: "networkidle2",
     });
@@ -225,10 +215,19 @@ async function loginAndGetFrame(teacher_id, password, functionCallFrom = null) {
         { timeout: 10000 }
         );
 
-        await page.waitForXPath("//span[normalize-space(text())='STUDENT PROFILE']", { timeout: 10000 });
+        await page.waitForFunction(() =>
+  [...document.querySelectorAll("span")]
+    .some(x => x.textContent.trim() === "STUDENT PROFILE"),
+  { timeout: 10000 }
+);
 
-        const [studentProfile] = await page.$x("//span[normalize-space(text())='STUDENT PROFILE']");
-        await studentProfile.click();
+await page.evaluate(() => {
+  [...document.querySelectorAll("span")]
+    .find(x => x.textContent.trim() === "STUDENT PROFILE")
+    ?.click();
+});
+
+
 
         await page.waitForFunction(() => {
         const iframe = document.querySelector("#capIframeId");
@@ -546,13 +545,18 @@ app.post("/get_student_profile", async (req, res) => {
   );
 }
 catch{
-    studentProfiles.push(`{"id":"${id}","No student found"}`);
+    studentProfiles.push({
+  id,
+  error: "No student found"
+});
+
     continue;
 }
 
 
      const profile = await frame.evaluate((id) => {
       let table = document.querySelector("#divProfile_BioData table");
+      if (!table) return { error: "No profile found", id };
       let rows = table.querySelectorAll("td");
 
          let name;
@@ -575,7 +579,8 @@ catch{
           let email;
           rows.forEach(td => {
           if (td.innerText.trim() === 'Email') {
-            email = td.nextElementSibling?.nextElementSibling?.innerText.trim();
+            email = td.nextElementSibling?.nextElementSibling?.innerText?.trim() || null;
+
           }
         });
 
